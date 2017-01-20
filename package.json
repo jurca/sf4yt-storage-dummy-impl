@@ -1,0 +1,30 @@
+{
+  "name": "sf4yt-storage-dummy-impl",
+  "version": "0.0.0",
+  "description": "Dummy (memory-only) implementation of the Storage interfaces for the Subscription Feed for YouTube Chrome extension",
+  "private": true,
+  "main": "StorageImpl.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "sf4yt",
+    "subscription",
+    "feed",
+    "for",
+    "youtube"
+  ],
+  "author": "Martin Jurča <mjurca@centrum.cz>",
+  "license": "ISC",
+  "browserify": {
+    "transform": [
+      "babelify"
+    ]
+  },
+  "dependencies": {
+    "sf4yt-storage": "github:jurca/sf4yt-storage#0.2.0"
+  },
+  "devDependencies": {
+    "flow-bin": "^0.37.4"
+  }
+}
