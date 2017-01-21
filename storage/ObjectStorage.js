@@ -2,11 +2,13 @@
 
 import clone from './clone'
 
+const EMPTY_RECORD = Object.freeze(Object.create(null))
+
 export default class ObjectStorage<E, P> {
   _idProperty: ?string
   _lastId: number = 0
   _records: Array<E> = []
-  _idToRecord: Map<P, E> = new Map()
+  _idToRecordIndex: Map<P, number> = new Map()
 
   constructor(idProperty: ?string) {
     this._idProperty = idProperty
@@ -17,7 +19,7 @@ export default class ObjectStorage<E, P> {
     sort?: (E, E) => number,
     offset?: number,
     limit?: number
-  ): Promise<Array<E>> {
+  ): Array<E> {
     let records = this._records
     if (filter) {
       records = records.filter(filter)
@@ -32,31 +34,72 @@ export default class ObjectStorage<E, P> {
       records = records.slice(0, limit)
     }
 
-    return Promise.resolve(records.map(clone))
+    return records.map(clone)
   }
 
-  get(id: P): Promise<?E> {
-    return Promise.resolve(this._idToRecord.get(id))
+  get(id: P): ?E {
+    let index: ?number = this._idToRecordIndex.get(id)
+    if (typeof index === 'number') {
+      return this._records[index]
+    }
+
+    return undefined
   }
 
-  add(record: E): Promise<P> {
+  add(record: E): P {
     let id: P
     if (this._idProperty) {
       let recordHash: { [property: string]: P } = (record: any)
       id = recordHash[this._idProperty]
     } else {
-      let numericId = (++this._lastId: any)
-      id = (numericId: P)
+      id = this.getNextId()
     }
 
     let clonedRecord = clone(record)
     this._records.push(clonedRecord)
-    this._idToRecord.set(id, clonedRecord)
+    this._idToRecordIndex.set(id, this._records.length)
 
-    return Promise.resolve(id)
+    return id
   }
 
-  update(record: E, id?: P): Promise<E> {}
+  getNextId(): P {
+    let numericId = (++this._lastId: any)
+    return (numericId: P)
+  }
 
-  delete(record: E): Promise<void> {}
+  update(record: E, id?: P): E {
+    let recordId: P
+    if (this._idProperty) {
+      let recordHash: { [property: string]: P } = (record: any)
+      recordId = recordHash[this._idProperty]
+      if (!recordId) {
+        throw new Error('Missing the record ID')
+      }
+    } else {
+      if (!id) {
+        throw new Error('Missing the record ID')
+      }
+      recordId = id
+    }
+
+    let index: ?number = this._idToRecordIndex.get(recordId)
+    if (typeof index === 'number') {
+      this._records[index] = clone(record)
+    } else {
+      this.add(record)
+    }
+
+    return record
+  }
+
+  delete(id: P): void {
+    let index: ?number = this._idToRecordIndex.get(id)
+    if (typeof index !== 'number') {
+      return
+    }
+
+    let emptyRecord = (EMPTY_RECORD: any)
+    this._records[index] = emptyRecord;
+    this._idToRecordIndex.delete(id)
+  }
 }
