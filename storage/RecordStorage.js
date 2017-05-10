@@ -20,7 +20,7 @@ export default class RecordStorage<E, P> {
 
   query(
     filter: P|IDBKeyRange|Array<P|IDBKeyRange>|{ [property: string]: any }|(E, P) => boolean,
-    order: string|Array<string>|(E, E) => number,
+    order?: string|Array<string>|(E, E) => number,
     offset?: number,
     limit?: number
   ): Promise<Array<E>> {
