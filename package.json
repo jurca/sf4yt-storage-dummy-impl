@@ -22,7 +22,7 @@
     ]
   },
   "dependencies": {
-    "sf4yt-storage": "github:jurca/sf4yt-storage#0.2.0"
+    "sf4yt-storage": "github:jurca/sf4yt-storage#0.2.1"
   },
   "devDependencies": {
     "flow-bin": "^0.37.4"
