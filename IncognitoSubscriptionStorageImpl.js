@@ -4,41 +4,40 @@ import type { Subscription } from 'sf4yt-storage/model/Subscription'
 import SubscriptionState from 'sf4yt-storage/model/SubscriptionState'
 import type { IncognitoSubscriptionStorage } from 'sf4yt-storage/IncognitoSubscriptionStorage'
 import clone from './storage/clone'
-
-// TODO: refactoring
-// TODO: distinguish between channel and playlist subscriptions
+import RecordStorage from './storage/RecordStorage'
 
 export default class IncognitoSubscriptionStorageImpl {
-  _subscriptions: Map<number, Subscription>
-  _lastId: number
+  _records: RecordStorage<Subscription, number|string>
 
-  constructor() {
-    this._lastId = 0
-    this._subscriptions = new Map()
+  constructor(records: RecordStorage<Subscription, number|string>) {
+    this._records = records
+
+    Object.freeze(this)
   }
 
   getIncognitoSubscriptions(): Promise<Array<Subscription>> {
-    return Promise.resolve(Array.from(this._subscriptions.values()).map(clone))
+    return this._records.query({
+      isIncognito: true
+    })
   }
 
-  addIncognitoSubscription(subscription: Subscription): Promise<Subscription> {
-    if (this._isSubscriptionPresent(subscription)) {
+  async addIncognitoSubscription(
+    subscription: Subscription
+  ): Promise<Subscription> {
+    if (await this._isSubscriptionPresent(subscription)) {
       throw new Error(
         `The specified incognito subscription to the playlist with ID ` +
         `${subscription.playlist.id} is already present in the storage`
       )
     }
 
-    this._subscriptions.set(++this._lastId, clone(subscription))
-    return Promise.resolve(subscription)
+    return this._records.persist(subscription)
   }
 
-  enableIncognitoSubscription(
+  async enableIncognitoSubscription(
     subscription: Subscription
   ): Promise<Subscription> {
-    let storedSubscription = Array.from(this._subscriptions.values()).filter(
-      sub => sub.playlist.id === subscription.playlist.id
-    )[0]
+    const storedSubscription = await this._records.find(subscription.id)
     if (!storedSubscription) {
       throw new Error(
         `The specified incognito subscription to the playlist with ID ` +
@@ -47,16 +46,15 @@ export default class IncognitoSubscriptionStorageImpl {
     }
 
     storedSubscription.state = SubscriptionState.ACTIVE
+    await this._records.persist(storedSubscription)
 
-    return Promise.resolve(clone(storedSubscription))
+    return clone(storedSubscription)
   }
 
-  disableIncognitoSubscription(
+  async disableIncognitoSubscription(
     subscription: Subscription
   ): Promise<Subscription> {
-    let storedSubscription = Array.from(this._subscriptions.values()).filter(
-      sub => sub.playlist.id === subscription.playlist.id
-    )[0]
+    const storedSubscription = await this._records.find(subscription.id)
     if (!storedSubscription) {
       throw new Error(
         `The specified incognito subscription to the playlist with ID ` +
@@ -65,27 +63,25 @@ export default class IncognitoSubscriptionStorageImpl {
     }
 
     storedSubscription.state = SubscriptionState.DISABLED
+    await this._records.persist(storedSubscription)
 
-    return Promise.resolve(clone(storedSubscription))
+    return clone(storedSubscription)
   }
 
   removeIncognitoSubscription(
     subscription: Subscription
   ): Promise<void> {
-    for (let [id, sub] of this._subscriptions) {
-      if (sub.playlist.id === subscription.playlist.id) {
-        this._subscriptions.delete(id)
-        return Promise.resolve()
-      }
-    }
-
-    return Promise.resolve()
+    return this._records.remove(subscription)
   }
 
-  _isSubscriptionPresent(subscription: Subscription): boolean {
-    return !!Array.from(this._subscriptions.values()).filter(
-      sub => sub.playlist.id === subscription.playlist.id
-    )[0]
+  async _isSubscriptionPresent(subscription: Subscription): Promise<boolean> {
+    let filter = {
+      type: subscription.type,
+      playlistId: subscription.playlist.id
+    }
+
+    let storedSubscription = await this._records.query(filter)
+    return !!storedSubscription
   }
 }
 
