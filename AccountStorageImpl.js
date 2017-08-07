@@ -3,7 +3,6 @@
 import type { Account } from 'sf4yt-storage/model/Account'
 import AccountState from 'sf4yt-storage/model/AccountState'
 import type { AccountStorage } from 'sf4yt-storage/AccountStorage'
-import clone from './storage/clone'
 import RecordStorage from './storage/RecordStorage'
 
 export default class AccountStorageImpl {
