@@ -4,31 +4,33 @@ import type { Account } from 'sf4yt-storage/model/Account'
 import AccountState from 'sf4yt-storage/model/AccountState'
 import type { AccountStorage } from 'sf4yt-storage/AccountStorage'
 import clone from './storage/clone'
+import RecordStorage from './storage/RecordStorage'
 
 export default class AccountStorageImpl {
-  _accounts: Map<string, Account>
+  _accounts: RecordStorage<Account, string>
 
-  constructor() {
-    this._accounts = new Map()
+  constructor(accounts: RecordStorage<Account, string>) {
+    this._accounts = accounts
+
+    Object.freeze(this)
   }
 
   getAccounts(): Promise<Array<Account>> {
-    return Promise.resolve(Array.from(this._accounts.values()).map(clone))
+    return this._accounts.query(_ => true, "title")
   }
 
-  addAccount(account: Account): Promise<Account> {
-    if (this._accounts.has(account.id)) {
+  async addAccount(account: Account): Promise<Account> {
+    if (await this._accounts.find(account.id)) {
       throw new Error(
-        `There already is an account with ID ${account.id} in the storage`
+        `There already is an account with the ${account.id} ID in the storage`
       )
     }
 
-    this._accounts.set(account.id, clone(account))
-    return Promise.resolve(account)
+    return this._accounts.persist(account)
   }
 
-  enableAccount(account: Account): Promise<Account> {
-    let storedAccount = this._accounts.get(account.id)
+  async enableAccount(account: Account): Promise<Account> {
+    let storedAccount = await this._accounts.find(account.id)
     if (!storedAccount) {
       throw new Error(
         `The specified account (ID ${account.id}) is not in the storage`
@@ -36,11 +38,11 @@ export default class AccountStorageImpl {
     }
 
     storedAccount.state = AccountState.ACTIVE
-    return Promise.resolve(clone(storedAccount))
+    return this._accounts.persist(storedAccount)
   }
 
-  disableAccount(account: Account): Promise<Account> {
-    let storedAccount = this._accounts.get(account.id)
+  async disableAccount(account: Account): Promise<Account> {
+    let storedAccount = await this._accounts.find(account.id)
     if (!storedAccount) {
       throw new Error(
         `The specified account (ID ${account.id}) is not in the storage`
@@ -48,13 +50,11 @@ export default class AccountStorageImpl {
     }
 
     storedAccount.state = AccountState.DISABLED
-    return Promise.resolve(clone(storedAccount))
+    return this._accounts.persist(storedAccount)
   }
 
   removeAccount(account: Account): Promise<void> {
-    this._accounts.delete(account.id)
-
-    return Promise.resolve()
+    return this._accounts.remove(account)
   }
 }
 
